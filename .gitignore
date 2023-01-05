@@ -1,0 +1,7 @@
+.ipynb_checkpoints
+__pycache__
+__MACOSX
+bkp/**
+dataset/**
+.DS_Store
+**/.DS_Store
