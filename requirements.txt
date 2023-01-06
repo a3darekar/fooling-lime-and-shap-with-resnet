@@ -2,3 +2,5 @@ lime
 shap
 scikit-learn
 scikit-image
+tensorflow
+opencv-python
