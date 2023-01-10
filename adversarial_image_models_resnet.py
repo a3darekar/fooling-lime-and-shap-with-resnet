@@ -163,10 +163,10 @@ class Adversarial_Lime_Model(Adversarial_Model):
 
 		if estimator is None:
 			self.perturbation_identifier = self.psi_display.get_model()
-			self.perturbation_identifier.fit(xtrain,ytrain)
+			self.perturbation_identifier.fit(xtrain, ytrain)
 		elif type(estimator) is Sequential:
 			self.perturbation_identifier = estimator
-			self.perturbation_identifier.fit(xtrain,ytrain)
+			self.perturbation_identifier.fit(xtrain, ytrain, epochs=5, validation_split=0.2)
 		else:
 			self.perturbation_identifier = RandomForestClassifier(n_estimators=rf_estimators).fit(xtrain,ytrain)
 
