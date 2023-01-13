@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-
+import matplotlib.pyplot as plt
 import sklearn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
@@ -31,7 +31,7 @@ class Adversarial_Model(object):
 		self.scaler = None
 		self.numerical_cols = None
 
-	def predict_proba(self, X, threshold=0.5):
+	def predict_proba(self, X, threshold=0.75):
 		""" Scikit-learn style probability prediction for the adversarial model.  
 
 		Parameters
@@ -123,7 +123,7 @@ class Adversarial_Lime_Model(Adversarial_Model):
 		super(Adversarial_Lime_Model, self).__init__(f_obscure, psi_display)
 		self.perturbation_std = perturbation_std
 
-	def train(self, X, y, perturbation_multiplier=30, categorical_features=[], estimator=None):
+	def train(self, X, y, perturbation_multiplier=30, categorical_features=[], estimator=None, plot_history=True):
 		""" Trains the adversarial LIME model.  This method trains the perturbation detection classifier to detect instances
 		that are either in the manifold or not if no estimator is provided.
 		
@@ -166,7 +166,7 @@ class Adversarial_Lime_Model(Adversarial_Model):
 			self.perturbation_identifier.fit(xtrain, ytrain)
 		elif type(estimator) is Sequential:
 			self.perturbation_identifier = estimator
-			self.perturbation_identifier.fit(xtrain, ytrain, epochs=5, validation_split=0.2)
+			history = self.perturbation_identifier.fit(xtrain, ytrain, epochs=5, validation_split=0.2)
 		else:
 			self.perturbation_identifier = RandomForestClassifier(n_estimators=rf_estimators).fit(xtrain,ytrain)
 
@@ -174,9 +174,26 @@ class Adversarial_Lime_Model(Adversarial_Model):
 		ypred = self.perturbation_identifier.predict(xtest, verbose = 0)
 		self.ood_training_task_ability = (ytest, ypred)
 
+		if plot_history:
+			plt.plot(history.history['accuracy'])
+			plt.plot(history.history['val_accuracy'])
+			plt.title('model accuracy')
+			plt.ylabel('accuracy')
+			plt.xlabel('epoch')
+			plt.legend(['train', 'test'], loc='upper left')
+			plt.show()
+			# summarize history for loss
+			plt.plot(history.history['loss'])
+			plt.plot(history.history['val_loss'])
+			plt.title('model loss')
+			plt.ylabel('loss')
+			plt.xlabel('epoch')
+			plt.legend(['train', 'test'], loc='upper left')
+			plt.show()
+
 		return self
 
-class Adversarial_Kernel_SHAP_Model(Adversarial_Model):
+class Adversarial_Partitioner_SHAP_Model(Adversarial_Model):
 	""" SHAP adversarial model.  Generates an adversarial model for SHAP style perturbations.
 
 	Parameters:
@@ -185,9 +202,9 @@ class Adversarial_Kernel_SHAP_Model(Adversarial_Model):
 	psi_display : function
 	"""
 	def __init__(self, f_obscure, psi_display):
-		super(Adversarial_Kernel_SHAP_Model, self).__init__(f_obscure, psi_display)
+		super(Adversarial_Partitioner_SHAP_Model, self).__init__(f_obscure, psi_display)
 
-	def train(self, X, y, background_distribution=None, perturbation_multiplier=10, n_samples=2e4, rf_estimators=100, n_kmeans=10, estimator=None, bkp_path=None):
+	def train(self, X, y, background_distribution=None, perturbation_multiplier=10, n_samples=2e4, estimator=None, plot_history=True):
 		""" Trains the adversarial SHAP model. This method perturbs the shap training distribution by sampling from 
 		its kmeans and randomly adding features.  These points get substituted into a test set.  We also check to make 
 		sure that the instance isn't in the test set before adding it to the out of distribution set. If an estimator is 
@@ -216,7 +233,7 @@ class Adversarial_Kernel_SHAP_Model(Adversarial_Model):
 
 		# This is the mock background distribution we'll pull from to create substitutions
 		if background_distribution is None:
-			background_distribution = shap.kmeans(X,n_kmeans).data
+			background_distribution = shap.maskers.Image("inpaint_telea", X[0].shape)
 		repeated_X = np.repeat(X, perturbation_multiplier, axis=0)
 
 		new_instances = []
@@ -251,11 +268,28 @@ class Adversarial_Kernel_SHAP_Model(Adversarial_Model):
 			self.perturbation_identifier.fit(xtrain,ytrain)
 		elif type(estimator) is Sequential:
 			self.perturbation_identifier = estimator
-			self.perturbation_identifier.fit(xtrain,ytrain)
+			history = self.perturbation_identifier.fit(xtrain, ytrain, epochs=5, validation_split=0.2)
 		else:
 			self.perturbation_identifier = RandomForestClassifier(n_estimators=rf_estimators).fit(xtrain,ytrain)
 
 		ypred = self.perturbation_identifier.predict(xtest, verbose = 0)
 		self.ood_training_task_ability = (ytest, ypred)
+
+		if plot_history:
+			plt.plot(history.history['accuracy'])
+			plt.plot(history.history['val_accuracy'])
+			plt.title('model accuracy')
+			plt.ylabel('accuracy')
+			plt.xlabel('epoch')
+			plt.legend(['train', 'test'], loc='upper left')
+			plt.show()
+			# summarize history for loss
+			plt.plot(history.history['loss'])
+			plt.plot(history.history['val_loss'])
+			plt.title('model loss')
+			plt.ylabel('loss')
+			plt.xlabel('epoch')
+			plt.legend(['train', 'test'], loc='upper left')
+			plt.show()
 
 		return self
